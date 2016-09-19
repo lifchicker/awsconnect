@@ -9,7 +9,10 @@ import yaml
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+from os.path import dirname, realpath
 
+
+APP_PATH = dirname(realpath(__file__))
 
 def get_instance_name(instance):
     return [t.get('Value') for t in instance.tags if t.get('Key', None) == 'Name'].pop()
@@ -91,7 +94,7 @@ class AWSConnect(QDialog):
         self.tray_icon = QSystemTrayIcon(self)
         self.tray_icon.setContextMenu(self.tray_icon_menu)
 
-        self.tray_icon.setIcon(QIcon("favicon.ico"))
+        self.tray_icon.setIcon(QIcon(APP_PATH + '/favicon.ico'))
 
         self.tray_icon.activated.connect(self.icon_activated)
 
@@ -119,7 +122,7 @@ if __name__ == "__main__":
     socket.setdefaulttimeout(60)
 
     if len(sys.argv) == 1:
-        app_config = read_config("settings.yaml")
+        app_config = read_config(APP_PATH + '/settings.yaml')
     else:
         app_config = read_config(sys.argv[1])
 
