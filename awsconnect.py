@@ -2,6 +2,7 @@
 
 import socket
 import sys
+from os.path import dirname, realpath
 from subprocess import call
 
 import boto3
@@ -9,10 +10,9 @@ import yaml
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from os.path import dirname, realpath
-
 
 APP_PATH = dirname(realpath(__file__))
+
 
 def get_instance_name(instance):
     return [t.get('Value') for t in instance.tags if t.get('Key', None) == 'Name'].pop()
@@ -37,6 +37,12 @@ def copy_to_clipboard(address):
         QApplication.clipboard().setText(address)
 
     return copy_to_clipboard_fn
+
+
+def create_action(parent, action_name, action_function):
+    action = QAction(action_name, parent)
+    action.triggered.connect(action_function)
+    return action
 
 
 def load_hosts(connections):
@@ -65,45 +71,50 @@ class AWSConnect(QDialog):
     def __init__(self, config=None, parent=None):
         QWidget.__init__(self, parent)
 
-        self.keys = config['keys']
+        self.instances = None
 
-        self.instances = load_hosts(config['connections'])
+        self.config = config
+        self.keys = self.config['keys']
 
-        self.create_tray_icon()
+        self.tray_icon = self.create_tray_icon()
+        self.tray_icon_menu = self.tray_icon.contextMenu()
+        self.update_menu()
 
-    def create_tray_icon(self):
-        self.tray_icon_menu = QMenu(self)
+    def build_tray_icon_menu(self):
+        tray_icon_menu = QMenu(self)
 
         for connection_name in self.instances:
-            connection_menu = self.tray_icon_menu.addMenu(connection_name)
+            connection_menu = tray_icon_menu.addMenu(connection_name)
 
             for instance in self.instances[connection_name]:
                 name = get_instance_name(instance)
                 instance_menu = connection_menu.addMenu(name)
-                instance_menu.addAction(self.create_action('Connect',
-                                                           open_tab_and_connect_ssh(name,
-                                                                                    instance.public_dns_name,
-                                                                                    self.keys[instance.key_name])))
-                instance_menu.addAction(self.create_action('Copy to clipboard',
-                                                           copy_to_clipboard(instance.public_dns_name)))
+                instance_menu.addAction(create_action(self,
+                                                      'Connect',
+                                                      open_tab_and_connect_ssh(name,
+                                                                               instance.public_dns_name,
+                                                                               self.keys[instance.key_name])))
+                instance_menu.addAction(create_action(self,
+                                                      'Copy to clipboard',
+                                                      copy_to_clipboard(instance.public_dns_name)))
 
-        self.quit_action = QAction("Quit", self)
-        self.quit_action.triggered.connect(qApp.quit)
-        self.tray_icon_menu.addAction(self.quit_action)
+        tray_icon_menu.addAction(create_action(self, 'Update', self.update_menu))
+        tray_icon_menu.addAction(create_action(self, 'Quit', qApp.quit))
+        return tray_icon_menu
 
-        self.tray_icon = QSystemTrayIcon(self)
+    def create_tray_icon(self):
+        tray_icon = QSystemTrayIcon(self)
+        tray_icon.setIcon(QIcon(APP_PATH + '/favicon.ico'))
+        tray_icon.activated.connect(self.icon_activated)
+        tray_icon.show()
+
+        return tray_icon
+
+    @pyqtSlot()
+    def update_menu(self):
+        self.instances = load_hosts(self.config['connections'])
+        self.tray_icon_menu = self.build_tray_icon_menu()
         self.tray_icon.setContextMenu(self.tray_icon_menu)
-
-        self.tray_icon.setIcon(QIcon(APP_PATH + '/favicon.ico'))
-
-        self.tray_icon.activated.connect(self.icon_activated)
-
-        self.tray_icon.show()
-
-    def create_action(self, action_name, action_function):
-        action = QAction(action_name, self)
-        action.triggered.connect(action_function)
-        return action
 
     @pyqtSlot(QSystemTrayIcon.ActivationReason)
     def icon_activated(self, reason):

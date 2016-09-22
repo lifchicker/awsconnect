@@ -8,6 +8,7 @@ What it can do now:
 1. read list of running instances and generate menu
 2. open the new **Konsole** tab and run the ssh command with key and address
 3. copy public dns name of instance to clipboard
+4. update menu without application reloading
 
 
 Dependencies
