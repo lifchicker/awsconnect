@@ -115,6 +115,7 @@ class AWSConnect(QDialog):
         self.instances = load_hosts(self.config['connections'])
         self.tray_icon_menu = self.build_tray_icon_menu()
         self.tray_icon.setContextMenu(self.tray_icon_menu)
+        self.tray_icon.showMessage('Update completed', 'Menu update completed!', QSystemTrayIcon.NoIcon, 2000)
 
     @pyqtSlot(QSystemTrayIcon.ActivationReason)
     def icon_activated(self, reason):
